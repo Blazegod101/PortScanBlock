@@ -7,7 +7,7 @@ import subprocess
 #TO-DO 
 """
 ***Needs Testing*** Need to create function that unblocks ips after a certain amount of time as most attackers will rotate IPs 
-Need to create fucntion that replys to the attackers SYN packet with a SYN+ACK packet with text in it. check out fail2ban/spoilerwall/portsentry repo 
+***Needs Testing*** Need to create fucntion that replys to the attackers SYN packet with a SYN+ACK packet with text in it.
 """
 
 # Threshold settings

@@ -1,4 +1,4 @@
-from scapy.all import sniff, TCP
+from scapy.all import sniff, TCP, IP, send
 from collections import defaultdict
 import threading
 import time
@@ -7,7 +7,7 @@ import subprocess
 #TO-DO 
 """
 ***Needs Testing*** Need to create function that unblocks ips after a certain amount of time as most attackers will rotate IPs 
-Need to create fucntion that replys to the attackers SYN packet with a SYN+ACK packet with text in it. 
+Need to create fucntion that replys to the attackers SYN packet with a SYN+ACK packet with text in it. check out fail2ban/spoilerwall/portsentry repo 
 """
 
 # Threshold settings
@@ -61,7 +61,9 @@ def detect_port_scan(packet):
     Detect port scanning activity by monitoring incoming TCP SYN packets.
     """
     if packet.haslayer(TCP) and packet[TCP].flags == "S":  # Check for SYN packets
-        source_ip = packet[0].src
+        source_ip = packet[IP].src
+        dest_ip = packet[IP].dst
+        source_port = packet[TCP].sport
         dest_port = packet[TCP].dport
         current_time = time.time()
 
@@ -75,10 +77,25 @@ def detect_port_scan(packet):
         ]
 
         # Check if the IP has scanned too many ports within the time window
-        scanned_ports = {entry[0] for entry in ip_scan_activity[source_ip]}  # Creates new list that keeps track of scanned ports and is used as a counter
+        scanned_ports = {entry[0] for entry in ip_scan_activity[source_ip]}  # Creates new list that keeps track of scanned ports from source IP and is used as a counter
         if len(scanned_ports) > PORT_SCAN_THRESHOLD:
             print(f"[!] Detected port scan from {source_ip}. Scanned {len(scanned_ports)} ports.")
             block_ip(source_ip)
+            
+            #Respond to scan by creating customm SYN+ACK response
+            """
+            Notes:
+            Maybe create a different function for this 
+            If i use this for a honeypot I can create a more realistic TCP response using seq and ack and data packets
+            """
+            response_packet = (
+            IP(src=dest_ip, dst=source_ip) / 
+            TCP(sport=dest_port, dport=source_port, flags="SA") / 
+            "You_hit_my_honeypot_:)" # Attaches custom payload message
+            )
+            # Send the response packet
+            send(response_packet, verbose=0)
+            print(f"[+] Response sent to {source_ip}")
 
 def main():
     print("Starting port scan detection...")
